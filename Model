@@ -1,0 +1,364 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import Navbar from './components/Navbar';
+import HomeView from './components/HomeView';
+import DetectorView from './components/DetectorView';
+import KnowledgeBase from './components/KnowledgeBase';
+import AssistantChatbot from './components/AssistantChatbot';
+import HistoryDashboard from './components/HistoryDashboard';
+import AdminPanel from './components/AdminPanel';
+import { DetectionRecord } from './types';
+import { Sprout, Activity, Database, Bot, HelpCircle, ArrowRight, Heart } from 'lucide-react';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<string>('home');
+  const [records, setRecords] = useState<DetectionRecord[]>([]);
+  const [geminiActive, setGeminiActive] = useState<boolean | null>(null);
+  const [activeContext, setActiveContext] = useState<DetectionRecord | null>(null);
+  const [reloadsToken, setReloadsToken] = useState<number>(0);
+
+  // Status check for Gemini API core engine
+  useEffect(() => {
+    async function checkStatus() {
+      try {
+        const res = await fetch('/api/status');
+        if (res.ok) {
+          const data = await res.json();
+          setGeminiActive(data.geminiActive);
+        } else {
+          setGeminiActive(false);
+        }
+      } catch (err) {
+        setGeminiActive(false);
+      }
+    }
+    checkStatus();
+  }, [reloadsToken]);
+
+  // Load diagnostic record logs initially
+  useEffect(() => {
+    async function fetchRecords() {
+      try {
+        const res = await fetch('/api/records');
+        if (res.ok) {
+          setRecords(await res.json());
+        }
+      } catch (err) {
+        console.error('Error fetching records:', err);
+      }
+    }
+    fetchRecords();
+  }, [reloadsToken]);
+
+  const handleRecordsUpdated = () => {
+    setReloadsToken((prev) => prev + 1);
+  };
+
+  const handleDiagnoseComplete = (newRec: DetectionRecord) => {
+    setReloadsToken((prev) => prev + 1);
+    setActiveContext(newRec); // Preload as chatbot context automatically!
+  };
+
+  const handleAskChatbotWithContext = (rec: any) => {
+    setActiveContext(rec as DetectionRecord);
+    setActiveTab('chatbot');
+  };
+
+  return (
+    <div id="agro_app_canvas" className="min-h-screen bg-stone-50 flex flex-col justify-between text-stone-800">
+      
+      {/* Prime Header Navigation bar */}
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        geminiActive={geminiActive}
+      />
+
+      {/* Main viewport Container Stage */}
+      <main id="view_stage" className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-8">
+        
+        {/* Render Tab Screens dynamically */}
+        {activeTab === 'home' && (
+          <HomeView
+            onScanClick={() => setActiveTab('detect')}
+            onKnowledgeClick={() => setActiveTab('knowledge')}
+          />
+        )}
+
+        {activeTab === 'detect' && (
+          <DetectorView
+            onDiagnoseComplete={handleDiagnoseComplete}
+            onAskChatbot={handleAskChatbotWithContext}
+          />
+        )}
+
+        {activeTab === 'knowledge' && (
+          <KnowledgeBase
+            onAskChatbotWithContext={handleAskChatbotWithContext}
+            onExploreScanShortcut={() => setActiveTab('detect')}
+          />
+        )}
+
+        {activeTab === 'chatbot' && (
+          <AssistantChatbot
+            activeContext={activeContext}
+          />
+        )}
+
+        {activeTab === 'history' && (
+          <HistoryDashboard
+            records={records}
+            onRecordsUpdated={handleRecordsUpdated}
+            onExploreShortcut={() => setActiveTab('detect')}
+          />
+        )}
+
+        {activeTab === 'admin' && (
+          <AdminPanel
+            onRecordsUpdated={handleRecordsUpdated}
+            onKnowledgeUpdated={handleRecordsUpdated}
+          />
+        )}
+
+      </main>
+
+      {/* Premium Agriculture footer */}
+      <footer id="farm_footer" className="bg-emerald-950 text-emerald-200 border-t border-emerald-900 py-12 px-4 md:px-6 mt-16 text-xs font-semibold">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          {/* brand footer column */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Sprout className="h-5 w-5 text-emerald-400" />
+              <span className="text-sm font-extrabold text-white">AgroVision AI System</span>
+            </div>
+            <p className="text-emerald-300 border-emerald-800 leading-relaxed font-light tracking-wide max-w-xs">
+              Autonomous Plant Pathology Detection and Agricultural Advisor Suite powered by Google Gemini multimodal intelligence.
+            </p>
+          </div>
+
+          {/* Quick link tags columns */}
+          <div className="space-y-4">
+            <h5 className="text-white text-xs uppercase font-extrabold tracking-widest">Collegiate Project Directory</h5>
+            <div className="grid grid-cols-2 gap-2 text-emerald-300 font-medium">
+              <span onClick={() => setActiveTab('home')} className="hover:text-emerald-100 cursor-pointer">01. Home View</span>
+              <span onClick={() => setActiveTab('detect')} className="hover:text-emerald-100 cursor-pointer">02. Scan Lab</span>
+              <span onClick={() => setActiveTab('knowledge')} className="hover:text-emerald-100 cursor-pointer">03. Directory</span>
+              <span onClick={() => setActiveTab('chatbot')} className="hover:text-emerald-100 cursor-pointer">04. AI Agent</span>
+              <span onClick={() => setActiveTab('history')} className="hover:text-emerald-100 cursor-pointer">05. History logs</span>
+              <span onClick={() => setActiveTab('admin')} className="hover:text-emerald-100 cursor-pointer">06. Control Desk</span>
+            </div>
+          </div>
+
+          {/* project specs */}
+          <div className="space-y-4">
+            <h5 className="text-white text-xs uppercase font-extrabold tracking-widest">Technical Specifications</h5>
+            <div className="space-y-1.5 text-emerald-300 font-mono text-[10px]">
+              <div>Engine: Next-gen Express Express Framework & Vite SPA</div>
+              <div>Intelligence: Google @google/genai SDK v2.4</div>
+              <div>Multimodal base: gemini-3.5-flash</div>
+              <div>Persistence: Local Disk-Based JSON/SQLite Simulator</div>
+            </div>
+          </div>
+
+        </div>
+
+        <div className="max-w-7xl mx-auto border-t border-emerald-900 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-stone-400 gap-4">
+          <span>&copy; {new Date().getFullYear()} AgroVision Association. Dedicated to sustainable cropping science.</span>
+          <div className="flex items-center space-x-1">
+            <span>Made with</span>
+            <Heart className="h-3 w-3 text-red-500 fill-red-500" />
+            <span>for Multimodal AI Project Evaluation.</span>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  );
+}
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import Navbar from './components/Navbar';
+import HomeView from './components/HomeView';
+import DetectorView from './components/DetectorView';
+import KnowledgeBase from './components/KnowledgeBase';
+import AssistantChatbot from './components/AssistantChatbot';
+import HistoryDashboard from './components/HistoryDashboard';
+import AdminPanel from './components/AdminPanel';
+import { DetectionRecord } from './types';
+import { Sprout, Activity, Database, Bot, HelpCircle, ArrowRight, Heart } from 'lucide-react';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<string>('home');
+  const [records, setRecords] = useState<DetectionRecord[]>([]);
+  const [geminiActive, setGeminiActive] = useState<boolean | null>(null);
+  const [activeContext, setActiveContext] = useState<DetectionRecord | null>(null);
+  const [reloadsToken, setReloadsToken] = useState<number>(0);
+
+  // Status check for Gemini API core engine
+  useEffect(() => {
+    async function checkStatus() {
+      try {
+        const res = await fetch('/api/status');
+        if (res.ok) {
+          const data = await res.json();
+          setGeminiActive(data.geminiActive);
+        } else {
+          setGeminiActive(false);
+        }
+      } catch (err) {
+        setGeminiActive(false);
+      }
+    }
+    checkStatus();
+  }, [reloadsToken]);
+
+  // Load diagnostic record logs initially
+  useEffect(() => {
+    async function fetchRecords() {
+      try {
+        const res = await fetch('/api/records');
+        if (res.ok) {
+          setRecords(await res.json());
+        }
+      } catch (err) {
+        console.error('Error fetching records:', err);
+      }
+    }
+    fetchRecords();
+  }, [reloadsToken]);
+
+  const handleRecordsUpdated = () => {
+    setReloadsToken((prev) => prev + 1);
+  };
+
+  const handleDiagnoseComplete = (newRec: DetectionRecord) => {
+    setReloadsToken((prev) => prev + 1);
+    setActiveContext(newRec); // Preload as chatbot context automatically!
+  };
+
+  const handleAskChatbotWithContext = (rec: any) => {
+    setActiveContext(rec as DetectionRecord);
+    setActiveTab('chatbot');
+  };
+
+  return (
+    <div id="agro_app_canvas" className="min-h-screen bg-stone-50 flex flex-col justify-between text-stone-800">
+      
+      {/* Prime Header Navigation bar */}
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        geminiActive={geminiActive}
+      />
+
+      {/* Main viewport Container Stage */}
+      <main id="view_stage" className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-8">
+        
+        {/* Render Tab Screens dynamically */}
+        {activeTab === 'home' && (
+          <HomeView
+            onScanClick={() => setActiveTab('detect')}
+            onKnowledgeClick={() => setActiveTab('knowledge')}
+          />
+        )}
+
+        {activeTab === 'detect' && (
+          <DetectorView
+            onDiagnoseComplete={handleDiagnoseComplete}
+            onAskChatbot={handleAskChatbotWithContext}
+          />
+        )}
+
+        {activeTab === 'knowledge' && (
+          <KnowledgeBase
+            onAskChatbotWithContext={handleAskChatbotWithContext}
+            onExploreScanShortcut={() => setActiveTab('detect')}
+          />
+        )}
+
+        {activeTab === 'chatbot' && (
+          <AssistantChatbot
+            activeContext={activeContext}
+          />
+        )}
+
+        {activeTab === 'history' && (
+          <HistoryDashboard
+            records={records}
+            onRecordsUpdated={handleRecordsUpdated}
+            onExploreShortcut={() => setActiveTab('detect')}
+          />
+        )}
+
+        {activeTab === 'admin' && (
+          <AdminPanel
+            onRecordsUpdated={handleRecordsUpdated}
+            onKnowledgeUpdated={handleRecordsUpdated}
+          />
+        )}
+
+      </main>
+
+      {/* Premium Agriculture footer */}
+      <footer id="farm_footer" className="bg-emerald-950 text-emerald-200 border-t border-emerald-900 py-12 px-4 md:px-6 mt-16 text-xs font-semibold">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          {/* brand footer column */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Sprout className="h-5 w-5 text-emerald-400" />
+              <span className="text-sm font-extrabold text-white">AgroVision AI System</span>
+            </div>
+            <p className="text-emerald-300 border-emerald-800 leading-relaxed font-light tracking-wide max-w-xs">
+              Autonomous Plant Pathology Detection and Agricultural Advisor Suite powered by Google Gemini multimodal intelligence.
+            </p>
+          </div>
+
+          {/* Quick link tags columns */}
+          <div className="space-y-4">
+            <h5 className="text-white text-xs uppercase font-extrabold tracking-widest">Collegiate Project Directory</h5>
+            <div className="grid grid-cols-2 gap-2 text-emerald-300 font-medium">
+              <span onClick={() => setActiveTab('home')} className="hover:text-emerald-100 cursor-pointer">01. Home View</span>
+              <span onClick={() => setActiveTab('detect')} className="hover:text-emerald-100 cursor-pointer">02. Scan Lab</span>
+              <span onClick={() => setActiveTab('knowledge')} className="hover:text-emerald-100 cursor-pointer">03. Directory</span>
+              <span onClick={() => setActiveTab('chatbot')} className="hover:text-emerald-100 cursor-pointer">04. AI Agent</span>
+              <span onClick={() => setActiveTab('history')} className="hover:text-emerald-100 cursor-pointer">05. History logs</span>
+              <span onClick={() => setActiveTab('admin')} className="hover:text-emerald-100 cursor-pointer">06. Control Desk</span>
+            </div>
+          </div>
+
+          {/* project specs */}
+          <div className="space-y-4">
+            <h5 className="text-white text-xs uppercase font-extrabold tracking-widest">Technical Specifications</h5>
+            <div className="space-y-1.5 text-emerald-300 font-mono text-[10px]">
+              <div>Engine: Next-gen Express Express Framework & Vite SPA</div>
+              <div>Intelligence: Google @google/genai SDK v2.4</div>
+              <div>Multimodal base: gemini-3.5-flash</div>
+              <div>Persistence: Local Disk-Based JSON/SQLite Simulator</div>
+            </div>
+          </div>
+
+        </div>
+
+        <div className="max-w-7xl mx-auto border-t border-emerald-900 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-stone-400 gap-4">
+          <span>&copy; {new Date().getFullYear()} AgroVision Association. Dedicated to sustainable cropping science.</span>
+          <div className="flex items-center space-x-1">
+            <span>Made with</span>
+            <Heart className="h-3 w-3 text-red-500 fill-red-500" />
+            <span>for Multimodal AI Project Evaluation.</span>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  );
+}
